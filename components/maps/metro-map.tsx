@@ -16,9 +16,10 @@ export function MetroMap({ pickup, destination, progress = 0 }: Props) {
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     let disposed = false;
-    let instance: MapType | undefined;
+    let instance: MapType | null = null;
     let timer: ReturnType<typeof setTimeout>;
-    import('maplibre-gl').then(({ default: maplibregl }) => {
+    import('maplibre-gl').then((m) => {
+      const maplibregl = (m as unknown as { default?: typeof m }).default || m;
       if (disposed || !container.current) return;
       try {
         // https://maplibre.org/maplibre-gl-js/docs/examples/add-a-raster-tile-source/
@@ -26,9 +27,9 @@ export function MetroMap({ pickup, destination, progress = 0 }: Props) {
           style: { version: 8, sources: { osm: { type: 'raster', tiles: [process.env.NEXT_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors', maxzoom: 19 } }, layers: [{ id: 'base', type: 'background', paint: { 'background-color': '#edf0eb' } }, { id: 'streets', type: 'raster', source: 'osm', paint: { 'raster-saturation': -0.85, 'raster-opacity': 0.7 } }] },
         });
         map.current = instance;
-        instance.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
-        instance.scrollZoom.disable();
-        instance.on('load', () => {
+        instance!.addControl(new maplibregl.AttributionControl({ compact: false }), 'bottom-right');
+        instance!.scrollZoom.disable();
+        instance!.on('load', () => {
           if (disposed || !instance) return;
           clearTimeout(timer);
           instance.addSource('journey', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
@@ -37,7 +38,7 @@ export function MetroMap({ pickup, destination, progress = 0 }: Props) {
           setReady(true);
         });
         let errors = 0;
-        instance.on('error', () => { if (++errors > 3 && !disposed) setFailed(true); });
+        instance!.on('error', () => { if (++errors > 3 && !disposed) setFailed(true); });
         timer = setTimeout(() => { if (!disposed && !instance?.loaded()) setFailed(true); }, 15000);
       } catch { if (!disposed) setFailed(true); }
     }).catch(() => { if (!disposed) setFailed(true); });
@@ -48,7 +49,8 @@ export function MetroMap({ pickup, destination, progress = 0 }: Props) {
     const instance = map.current;
     const controller = new AbortController();
     let disposed = false;
-    import('maplibre-gl').then(({ default: maplibregl }) => {
+    import('maplibre-gl').then((m) => {
+      const maplibregl = (m as unknown as { default?: typeof m }).default || m;
       if (disposed) return;
       markers.current.forEach(marker => marker.remove()); markers.current = [];
       [pickup, destination].forEach((place, index) => {

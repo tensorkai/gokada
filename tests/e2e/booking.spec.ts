@@ -6,13 +6,15 @@ test.beforeEach(async ({ page }) => {
 });
 async function destination(page: Page, city = 'Taguig') {
   const input = page.getByRole('combobox', { name: 'Drop-off location' });
+  await input.waitFor();
+  await input.click();
   await input.fill(city);
-  await page.getByRole('option').first().click();
+  await page.locator('.place-option').filter({ hasText: new RegExp(city, 'i') }).first().click();
 }
 test('ride booking, server quote, refresh persistence, and full journey', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'See ride fare' }).click();
-  await expect(page.getByRole('alert')).toContainText('drop-off');
+  await expect(page.locator('.form-error')).toContainText('drop-off');
   await destination(page);
   await page.getByRole('button', { name: 'See ride fare' }).click();
   await expect(page.getByRole('heading', { name: 'One last look.' })).toBeVisible();
@@ -35,7 +37,7 @@ test('delivery validates contact details, medium parcel, and cancellation', asyn
   await page.getByLabel('Recipient name').fill('Demo Recipient');
   await page.getByLabel('Recipient mobile number').fill('123');
   await page.getByRole('button', { name: 'See delivery fare' }).click();
-  await expect(page.getByRole('alert')).toContainText('Philippine mobile number');
+  await expect(page.locator('.form-error')).toContainText('Philippine mobile number');
   await page.getByLabel('Recipient mobile number').fill('09123456789');
   await page.getByRole('radio', { name: /Medium/ }).check();
   await page.getByRole('button', { name: 'See delivery fare' }).click();
@@ -88,12 +90,12 @@ test('keyboard location search, same-location error and location denial', async 
   await page.addInitScript(() => { Object.defineProperty(navigator, 'geolocation', { value: { getCurrentPosition: (_success: unknown, failure: (error: { code: number }) => void) => failure({ code: 1 }) } }); });
   await page.goto('/');
   await page.getByRole('button', { name: 'Use my current location' }).click();
-  await expect(page.getByRole('alert')).toContainText('location');
+  await expect(page.locator('.form-error')).toContainText('location');
   const input = page.getByRole('combobox', { name: 'Drop-off location' });
   await input.fill('Ayala Triangle');
   await input.press('Enter');
   await page.getByRole('button', { name: 'See ride fare' }).click();
-  await expect(page.getByRole('alert')).toContainText('different');
+  await expect(page.locator('.form-error')).toContainText('different');
   await input.fill('not-a-landmark');
   await expect(page.getByText('No matching demo landmark.', { exact: false })).toBeVisible();
   await input.press('Escape');

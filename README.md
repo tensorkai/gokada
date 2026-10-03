@@ -4,19 +4,19 @@ Gokada is a delivery and motorcycle taxi app being built for our hackathon proje
 
 ## Current status
 
-The repository currently contains a Next.js starter application. The home page, page metadata, and public assets still use the starter content. No delivery or motorcycle taxi features are implemented yet.
+The repository implements a fully functional front-end demo of both the motorcycle taxi and delivery booking flows. It uses simulated server data and local storage to provide a realistic booking experience without requiring a backend.
 
 | Area | Status |
 | --- | --- |
-| Web foundation | Next.js App Router, React, TypeScript, Tailwind CSS, and ESLint configured |
-| Project organization | Route, feature, shared UI, integration, demo data, and test folders scaffolded |
-| Delivery and motorcycle taxi booking | Planned |
-| Driver assignment and trip progress | Planned |
-| Maps, address search, routes, and ETA | No provider integrated |
-| Authentication, database, and backend booking logic | Not implemented |
-| Payments and notifications | Not integrated |
-| Automated application tests | No test runner or test script configured |
-| Deployment | No project deployment documented |
+| Web foundation | Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, and ESLint configured |
+| Project organization | Route, feature, shared UI, integration, demo data, and test folders implemented |
+| Delivery and motorcycle taxi booking | **Implemented** (Simulated client flows) |
+| Driver assignment and trip progress | **Implemented** (Simulated status transitions) |
+| Maps, address search, routes, and ETA | **Implemented** (MapLibre GL JS with OpenStreetMap) |
+| Authentication, database, and backend | **Simulated** (Uses `localStorage` and dummy API routes) |
+| Payments and notifications | Not integrated (Demo fares shown) |
+| Automated application tests | **Implemented** (Playwright E2E suite configured) |
+| Deployment | Ready for Next.js hosting |
 
 Installed agent skills include mapping guidance; they do not constitute an application integration.
 
@@ -78,8 +78,9 @@ On Windows PowerShell, use `npm.cmd` instead of `npm` if execution policy blocks
 | `npm run lint` | Run ESLint |
 | `npm run build` | Create a production build and run Next.js build checks |
 | `npm run start` | Serve the production build after a successful build |
+| `npx playwright test` | Run the end-to-end test suite |
 
-Run lint and build before handing off application changes. Next.js does not run ESLint automatically during the build. There is currently no `npm test` command.
+Run lint, build, and tests before handing off application changes. Next.js does not run ESLint automatically during the build.
 
 The root layout loads Geist fonts through `next/font/google`; builds may require network access to download them.
 

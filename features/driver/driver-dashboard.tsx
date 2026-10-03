@@ -8,6 +8,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { findPlace } from '@/data/demo/places';
 import { currency, isBooking, type Booking, type Service } from '@/features/bookings/model';
 import { saveBooking, updateDriverBooking, useBookings } from '@/features/bookings/store';
+import { SafetyDesk } from './safety-desk';
 
 const subscribe = () => () => {};
 
@@ -21,10 +22,12 @@ export function DriverDashboard() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [safeOrderIds, setSafeOrderIds] = useState<string[]>([]);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const active = bookings.find(job => job.acceptedByDemoDriver && ['arriving', 'in-progress'].includes(job.status));
   const requests = bookings.filter(job => job.status === 'confirmed' && !job.acceptedByDemoDriver && !skipped.includes(job.id) && (filter === 'all' || job.service === filter));
-  const selected = active || requests.find(job => job.id === selectedId) || requests[0];
+  const orderedRequests = safeOrderIds.length ? [...requests].sort((a, b) => safeOrderIds.indexOf(a.id) - safeOrderIds.indexOf(b.id)) : requests;
+  const selected = active || orderedRequests.find(job => job.id === selectedId) || orderedRequests[0];
   const completed = bookings.filter(job => job.acceptedByDemoDriver && job.status === 'completed');
   const fareTotal = completed.reduce((sum, job) => sum + job.quote.total, 0);
 
@@ -70,6 +73,7 @@ export function DriverDashboard() {
     <div className="driver-summary" aria-label="Driver demo totals"><div><strong>{completed.length}</strong><span>Completed jobs</span></div><div><strong>{currency(fareTotal)}</strong><span>Completed demo fares</span></div><p>Totals from your saved jobs in this browser. Gross sample fares, not take-home earnings or money paid.</p></div>
     {error && <p className="form-error" role="alert">{error}</p>}
     <p className="driver-feedback" role="status">{notice}</p>
+    <SafetyDesk orders={requests} onApplyOrder={setSafeOrderIds} />
     <div className="driver-workspace">
       <section className="driver-jobs" aria-label={active ? 'Active job' : 'Job requests'}>
         {active ? <><div className="driver-section-title"><h2>Your active job</h2><span className="demo-tag">Accepted</span></div><JobDetails job={active} />
@@ -80,7 +84,7 @@ export function DriverDashboard() {
         </> : <>
           <div className="driver-section-title"><h2>Job requests</h2><span>{requests.length} available</span></div>
           <div className="driver-filters" role="group" aria-label="Filter job requests">{(['all', 'ride', 'delivery'] as const).map(value => <button key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value === 'all' ? 'All jobs' : value === 'ride' ? 'Rides' : 'Deliveries'}</button>)}</div>
-          {requests.length ? <div className="driver-request-list">{requests.map(job => <button key={job.id} className="driver-request" aria-pressed={selected?.id === job.id} onClick={() => setSelectedId(job.id)}>{job.service === 'ride' ? <Motorcycle size={24} /> : <Package size={24} />}<span><small>{job.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'}</small><strong>{findPlace(job.destinationId)?.name}</strong></span><b>{currency(job.quote.total)}</b></button>)}</div> : <div className="driver-empty"><MapPin size={32} /><h3>No requests to show</h3><p>Add a sample job below, change the filter, or create a booking from the customer view.</p></div>}
+          {requests.length ? <div className="driver-request-list">{orderedRequests.map(job => <button key={job.id} className="driver-request" aria-pressed={selected?.id === job.id} onClick={() => setSelectedId(job.id)}>{job.service === 'ride' ? <Motorcycle size={24} /> : <Package size={24} />}<span><small>{job.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'}</small><strong>{findPlace(job.destinationId)?.name}</strong></span><b>{currency(job.quote.total)}</b></button>)}</div> : <div className="driver-empty"><MapPin size={32} /><h3>No requests to show</h3><p>Add a sample job below, change the filter, or create a booking from the customer view.</p></div>}
           {selected && <><JobDetails job={selected} /><button className="primary-button driver-action" disabled={!online || pending} onClick={() => act(selected.id, 'accept')}>Accept {selected.service === 'ride' ? 'ride' : 'delivery'}<ArrowRight size={19} /></button>{!online && <p className="small muted">Go online above to accept this request.</p>}<button className="cancel-booking" onClick={() => { setSkipped(items => [...items, selected.id]); setNotice('Request skipped for this visit. The customer booking is unchanged.'); }}>Skip this request</button></>}
           {skipped.length > 0 && <button className="secondary-button" onClick={() => setSkipped([])}>Show skipped requests</button>}
         </>}

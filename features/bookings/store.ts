@@ -33,3 +33,20 @@ export function clearBookings() {
   localStorage.removeItem(KEY);
   window.dispatchEvent(new Event(event));
 }
+
+export function updateDriverBooking(id: string, action: 'accept' | 'start' | 'complete' | 'cancel') {
+  // Read again at the moment of action: another tab may have cancelled or reset it.
+  const items = read();
+  const booking = items.find(item => item.id === id);
+  if (!booking) throw new Error('This job is no longer available. Choose another request.');
+  if (action === 'accept') {
+    if (booking.status !== 'confirmed' || booking.acceptedByDemoDriver) throw new Error('This request has changed. Choose another job.');
+    if (items.some(item => item.acceptedByDemoDriver && ['arriving', 'in-progress'].includes(item.status))) throw new Error('Finish or cancel your active job before accepting another.');
+    saveBooking({ ...booking, acceptedByDemoDriver: true, status: 'arriving' });
+    return;
+  }
+  if (!booking.acceptedByDemoDriver || (action === 'start' && booking.status !== 'arriving') || (action === 'complete' && booking.status !== 'in-progress') || (action === 'cancel' && !['arriving', 'in-progress'].includes(booking.status))) {
+    throw new Error('This job has changed. Check its current status before continuing.');
+  }
+  saveBooking({ ...booking, status: action === 'start' ? 'in-progress' : action === 'complete' ? 'completed' : 'cancelled' });
+}

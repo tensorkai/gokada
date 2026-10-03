@@ -16,8 +16,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <header className="site-header">
       <Link className="wordmark" href="/" aria-label="Gokada home"><span className="brand-symbol"><ArrowUpRight weight="bold" size={26} /></span>gokada<span className="brand-period">.</span></Link>
       <nav className="main-nav" aria-label="Main navigation">
-        <Link href="/" className={!pathname.startsWith('/bookings') ? 'nav-link active' : 'nav-link'}><Compass size={19} />Book a trip</Link>
+        <Link href="/" className={!pathname.startsWith('/bookings') && pathname !== '/driver' ? 'nav-link active' : 'nav-link'}><Compass size={19} />Book a trip</Link>
         <Link href="/bookings" className={pathname.startsWith('/bookings') ? 'nav-link active' : 'nav-link'}><ClockCounterClockwise size={19} />My bookings</Link>
+        <Link href="/driver" className={pathname === '/driver' ? 'nav-link active' : 'nav-link'} aria-current={pathname === '/driver' ? 'page' : undefined}><Motorcycle size={19} />Driver view</Link>
       </nav>
       <div className="header-actions"><button className="area-button" onClick={() => setDialog('area')}><MapPin size={18} weight="fill" />Metro Manila<span className="tiny-dot" /></button><button className="icon-button help-button" aria-label="Help and demo guide" onClick={() => setDialog('help')}><Question size={23} /></button><button className="avatar-button" aria-label="Guest profile" onClick={() => setDialog('profile')}>G</button></div>
     </header>
@@ -26,6 +27,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <Dialog open={dialog === 'help'} onClose={() => setDialog(null)} title="Let’s get you moving">
       <div className="help-item"><Motorcycle size={28} /><div><h3>Book a motorcycle ride</h3><p>Choose two demo destinations, review your fare, and confirm. Advance the driver journey from your booking page.</p></div></div>
       <div className="help-item"><Package size={28} /><div><h3>Send a parcel</h3><p>Add the recipient and parcel size before reviewing your delivery. Use fictional contact details for this demo.</p></div></div>
+      <div className="help-item"><Motorcycle size={28} /><div><h3>Try the driver view</h3><p>Go online, accept a saved or sample request, then pick up and complete the job. The customer view updates in this browser. Completed fares are illustrative, not payouts.</p></div></div>
       <div className="help-item"><ShieldCheck size={28} /><div><h3>A demo you control</h3><p>Drivers, fares, and progress are simulated. Your bookings stay in this browser. There is no real dispatch, payment, or emergency assistance.</p></div></div>
       <p className="muted small">Landmarks use approximate coordinates. Check pickup entrances before any real-world use. Map tiles require an internet connection.</p>
       <button className="primary-button" onClick={() => setDialog(null)}>Got it</button>

@@ -8,6 +8,8 @@
 - `features/bookings/booking-app.tsx`: both forms, review, unavailable-driver scenario, and booking creation.
 - `features/bookings/booking-history.tsx`: history and service filters.
 - `features/tracking/booking-detail.tsx`: demo progress, cancellation, and receipt.
+- `app/driver/page.tsx` and `features/driver/driver-dashboard.tsx`: driver availability, request review, sample-job creation, active work, and completed fare totals. Uses the same local booking store as customers.
+- `updateDriverBooking` in the booking store re-reads saved data, checks allowed transitions, and limits the demo driver to one active accepted job. Optional `acceptedByDemoDriver` metadata preserves compatibility with existing bookings; it is not an authentication or dispatch mechanism.
 - `components/`: app shell, native dialogs, keyboard landmark search, and MapLibre map with fallback.
 - `data/demo/places.ts`: approximate landmark fixtures.
 - `scripts/prepare-map-assets.mjs`: copies matching browser worker assets and license notices before dev/build.

@@ -7,7 +7,7 @@ export type BookingInput = {
   recipient: string; phone: string; parcel: 'small' | 'medium'; notes: string;
 };
 export type Quote = { distance: number; minutes: number; base: number; distanceFee: number; parcelFee: number; total: number };
-export type Booking = BookingInput & { id: string; createdAt: string; status: BookingStatus; quote: Quote; demo: true };
+export type Booking = BookingInput & { id: string; createdAt: string; status: BookingStatus; quote: Quote; demo: true; acceptedByDemoDriver?: true };
 export const currency = (value: number) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP', maximumFractionDigits: 0 }).format(value);
 export function distanceKm(a: Place, b: Place) {
   const radians = (n: number) => n * Math.PI / 180;
@@ -50,6 +50,7 @@ export function isBooking(value: unknown): value is Booking {
   const data = value as Booking | null;
   if (!data || !validateBooking(data).input || typeof data.id !== 'string' || !/^GK-[a-z0-9-]+$/i.test(data.id) || typeof data.createdAt !== 'string' || !Number.isFinite(Date.parse(data.createdAt)) || data.demo !== true) return false;
   if (!['confirmed', 'arriving', 'in-progress', 'completed', 'cancelled'].includes(data.status)) return false;
+  if (data.acceptedByDemoDriver !== undefined && data.acceptedByDemoDriver !== true) return false;
   const expected = getQuote(data);
   return !!data.quote && Object.keys(expected).every((key) => data.quote[key as keyof Quote] === expected[key as keyof Quote]);
 }

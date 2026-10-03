@@ -24,8 +24,9 @@ No account, API key, database, or payment setup is required for the booking demo
 - Simulated driver progress, cancellation, ride completion, and delivery completion.
 - An unavailable-driver scenario that can be turned off to retry.
 - Responsive layouts, dialogs, map retry, and errors for invalid requests or unavailable browser storage.
+- Driver workspace at `/driver`: online/offline availability, ride/delivery requests, sample jobs, accept/skip, pickup, completion, cancellation, and completed-job fare totals shared with the customer view in this browser.
 
-Bookings, drivers, availability, fares, payment choices, and progress are simulated. No real driver is dispatched and no money is collected. There is no authentication, shared database, live tracking, dispatch system, payment processing, delivery proof, or driver/admin app. History is limited to the latest 100 bookings in this browser; use fictional contact details.
+Bookings, drivers, availability, fares, payment choices, and progress are simulated. No real driver is dispatched and no money is collected. There is no authentication, shared database, live tracking, dispatch system, payment processing, delivery proof, or production driver/admin app. History is limited to the latest 100 bookings in this browser; use fictional contact details.
 
 ## Present the demo
 
@@ -35,6 +36,16 @@ Bookings, drivers, availability, fares, payment choices, and progress are simula
 4. Advance collection and delivery, or cancel and inspect the saved booking in **My bookings**.
 5. Select **Simulate unavailable drivers** to show failure and recovery. Turn it off and retry.
 6. Use **Guest profile > Reset booking history** before the next presentation.
+
+### Driver presentation
+
+1. Open **Driver view** from the navigation, then **Add demo ride** or **Add demo delivery**. Customer-created bookings also appear here while their status is confirmed.
+2. Select **Go online**, review pickup, drop-off, notes, parcel details, and the sample fare, then accept a request. Only one accepted job can be active at a time.
+3. Choose **Pick up passenger** or **Collect parcel**, then complete the job. **View customer booking** shows the same progress; tabs at the same origin share updates through browser storage.
+4. Completed jobs contribute their gross sample fare to **Completed demo fares**. These are not earnings after costs or commission, and no payouts occur. Cancelled jobs are excluded.
+5. Going offline pauses new acceptance while leaving the active job accessible. Refresh preserves accepted jobs but starts availability offline. Skipped requests are hidden only for the current visit; **Show skipped requests** restores them without changing the customer booking.
+
+This is one simulated driver using browser-local data, not authenticated assignment or multi-driver dispatch. Cancelling from either view updates the same booking; resetting history clears driver jobs and totals too. Customer demo controls remain available for presentations. Sample-job creation needs the local Next.js server, but no external account or keys. Configuration stays in `.env.local`.
 
 ## Demo fixtures, not operating policies
 

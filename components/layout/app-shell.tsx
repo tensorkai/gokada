@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <button className="primary-button" onClick={() => setDialog(null)}>Got it</button>
     </Dialog>
     <Dialog open={dialog === 'area'} onClose={() => setDialog(null)} title="Around Metro Manila">
-      <p className="muted">Explore sample destinations across all 16 cities and Pateros. This represents our planned service area, with simulated availability.</p>
+      <p className="muted">Explore sample destinations across all 16 cities and Pateros. These are sample locations for this demo, not a confirmed operating area.</p>
       <div className="city-grid">{places.map(place => <span key={place.id}><MapPin size={15} />{place.city}</span>)}</div>
       <p className="small muted">Search currently covers the curated landmarks, not every street address.</p>
     </Dialog>

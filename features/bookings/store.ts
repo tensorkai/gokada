@@ -11,11 +11,11 @@ function read() {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw === cachedRaw) return cached;
-    cachedRaw = raw;
     const data: unknown = JSON.parse(raw || '[]');
     cached = Array.isArray(data) ? data.filter(isBooking) : empty;
+    cachedRaw = raw;
     return cached;
-  } catch { return empty; }
+  } catch { cachedRaw = null; cached = empty; return empty; }
 }
 function subscribe(listener: () => void) {
   window.addEventListener('storage', listener);
@@ -24,6 +24,7 @@ function subscribe(listener: () => void) {
 }
 export const useBookings = () => useSyncExternalStore(subscribe, read, () => empty);
 export function saveBooking(booking: Booking) {
+  if (!isBooking(booking)) throw new Error('Invalid demo booking. Please try again.');
   const items = read();
   localStorage.setItem(KEY, JSON.stringify([booking, ...items.filter((item) => item.id !== booking.id)].slice(0, 100)));
   window.dispatchEvent(new Event(event));

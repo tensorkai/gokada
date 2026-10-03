@@ -6,7 +6,7 @@ import { ArrowRight, ArrowLeft, ArrowsDownUp, Motorcycle, Package, Crosshair, Cl
 import { PlaceSearch } from '@/components/ui/place-search';
 import { MetroMap } from '@/components/maps/metro-map';
 import { places, findPlace, type Place } from '@/data/demo/places';
-import { currency, distanceKm, getQuote, validateBooking, type Service, type BookingInput } from './model';
+import { currency, distanceKm, getQuote, isBooking, validateBooking, type Service, type BookingInput } from './model';
 import { saveBooking, useBookings } from './store';
 
 export function BookingApp({ initialService = 'ride' }: { initialService?: Service }) {
@@ -24,10 +24,11 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
   const [error, setError] = useState('');
   const [locationNotice, setLocationNotice] = useState('');
   const [fareInfo, setFareInfo] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const bookings = useBookings();
   const input: BookingInput = { service, pickupId: pickup?.id || '', destinationId: destination?.id || '', recipient, phone, parcel, notes };
   const quote = pickup && destination && pickup.id !== destination.id ? getQuote(input) : null;
-  const changeService = (next: Service) => { setService(next); setReview(false); setError(''); window.history.replaceState(null, '', next === 'ride' ? '/ride' : '/delivery'); };
+  const changeService = (next: Service) => { setService(next); setReview(false); setError(''); router.push(next === 'ride' ? '/ride' : '/delivery'); };
   const locate = () => {
     if (!navigator.geolocation) { setError('Location is unavailable in this browser. Choose a pickup landmark.'); return; }
     setLocating(true); setError('');
@@ -44,6 +45,7 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
     const valid = validateBooking(input);
     if (!valid.input) { setError(valid.error || 'Check your booking details.'); return; }
     setError('');
+    if (unavailable) { setError('No demo drivers available. Turn off the unavailable-driver scenario and try again.'); return; }
     if (!review) { setReview(true); return; }
     if (pending) return;
     setPending(true);
@@ -51,6 +53,7 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
       const response = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), signal: AbortSignal.timeout(12000) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not create your booking. Try again.');
+      if (!isBooking(data.booking)) throw new Error('The booking response was invalid. Please try again.');
       try { saveBooking(data.booking); } catch { throw new Error('Your browser could not save this demo booking. Enable site storage and try again.'); }
       router.push(`/bookings/${data.booking.id}`);
     } catch (err) { setError(err instanceof Error && err.name !== 'TimeoutError' ? err.message : 'The connection timed out. Please try again.'); setPending(false); }
@@ -59,8 +62,10 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
     <div className="page-intro"><div><div className="welcome-line"><span className="tiny-dot" />Good things are just a ride away</div><h1>Where are we going?</h1><p>A ride for you. A delivery for them. Let’s get moving.</p></div><div className="intro-note"><ShieldCheck size={21} weight="duotone" /><span>Built for your<br /><strong>everyday journeys</strong></span></div></div>
     <div className="booking-workspace">
       <div className="booking-panel">
-        <div className="service-tabs" role="tablist" aria-label="Choose service"><button role="tab" aria-selected={service === 'ride'} className={service === 'ride' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('ride')}><Motorcycle size={30} weight="duotone" /><span>Book a ride<small>Beat the city rush</small></span>{service === 'ride' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button><button role="tab" aria-selected={service === 'delivery'} className={service === 'delivery' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('delivery')}><Package size={29} weight="duotone" /><span>Send a parcel<small>A little door-to-door</small></span>{service === 'delivery' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button></div>
+        <div className="service-tabs" role="group" aria-label="Choose service"><button aria-pressed={service === 'ride'} className={service === 'ride' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('ride')}><Motorcycle size={30} weight="duotone" /><span>Book a ride<small>Beat the city rush</small></span>{service === 'ride' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button><button aria-pressed={service === 'delivery'} className={service === 'delivery' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('delivery')}><Package size={29} weight="duotone" /><span>Send a parcel<small>A little door-to-door</small></span>{service === 'delivery' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button></div>
         <form onSubmit={submit} className="booking-form">
+          <p className="demo-notice">Hackathon demo: simulated drivers and fares. No real dispatch or charges.</p>
+          <label className="demo-scenario"><input type="checkbox" checked={unavailable} onChange={event => { setUnavailable(event.target.checked); setError(''); }} />Simulate unavailable drivers</label>
           <div className="panel-heading">{review ? <button type="button" className="back-button" onClick={() => { setReview(false); setError(''); }}><ArrowLeft size={18} />Edit trip</button> : <h2>{service === 'ride' ? 'Let’s plan your ride' : 'Let’s send your parcel'}</h2>}<span className="leave-now"><Clock size={15} />{review ? 'Fare review' : 'Leave now'}</span></div>
           {!review ? <>
             <div className="locations"><PlaceSearch label="Pickup location" kind="pickup" value={pickup} onChange={place => { setPickup(place); setError(''); }} /><span className="location-connector" /><button className="swap-button" type="button" aria-label="Swap pickup and drop-off" onClick={() => { setPickup(destination); setDestination(pickup); }}><ArrowsDownUp size={19} /></button><PlaceSearch label="Drop-off location" kind="destination" value={destination} onChange={place => { setDestination(place); setError(''); }} /></div>

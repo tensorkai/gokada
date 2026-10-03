@@ -4,6 +4,66 @@ test.beforeEach(async ({ page }) => {
   // Do not load community tile servers during automated testing.
   await page.route('https://tile.openstreetmap.org/**', route => route.abort());
 });
+
+test('route previews are illustrative and validate landmarks', async ({ request }) => {
+  for (const query of ['', '?from=ayala&to=ayala', '?from=unknown&to=bgc']) {
+    expect((await request.get(`/api/route-preview${query}`)).status()).toBe(400);
+  }
+  const response = await request.get('/api/route-preview?from=ayala&to=bgc');
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toEqual({ mode: 'illustrative', coordinates: [[121.0238, 14.5573], [121.051, 14.5508]] });
+});
+
+test('street map renders, recovers after tile failure, and restores trip markers', async ({ page }) => {
+  await page.goto('/ride');
+  await destination(page);
+  await expect(page.getByRole('button', { name: 'Retry street map' })).toBeVisible({ timeout: 25000 });
+  // Tiny fixture tile exercises the real MapLibre worker and canvas without network access.
+  const tileData = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 256;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = '#edf0eb';
+    context.fillRect(0, 0, 256, 256);
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  const tile = Buffer.from(tileData, 'base64');
+  await page.route('https://tile.openstreetmap.org/**', route => route.fulfill({ contentType: 'image/png', body: tile }));
+  await page.getByRole('button', { name: 'Retry street map' }).click();
+  await expect(page.locator('.map-fallback')).toHaveCount(0);
+  await expectMapFillsPanel(page);
+  await expect(page.locator('.map-pin')).toHaveCount(2);
+  await expect(page.locator('.maplibregl-ctrl-attrib')).toContainText('OpenStreetMap');
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+  await page.getByRole('button', { name: 'Fit trip on map' }).click();
+  await page.getByRole('button', { name: 'See ride fare' }).click();
+  await expectMapFillsPanel(page);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expectMapFillsPanel(page);
+  await page.screenshot({ path: 'test-results/street-map-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Confirm demo ride' }).click();
+  await page.getByRole('button', { name: 'Simulate driver arrival' }).click();
+  await expect(page.locator('.map-driver')).toHaveCount(1);
+  const position = await page.locator('.map-driver').getAttribute('style');
+  await page.getByRole('button', { name: 'Start demo ride' }).click();
+  await expect(page.locator('.map-driver')).not.toHaveAttribute('style', position!);
+  await expectMapFillsPanel(page);
+});
+
+async function expectMapFillsPanel(page: Page) {
+  // A loaded map with markers can still have a collapsed, invisible canvas.
+  await expect.poll(() => page.locator('.metro-map').evaluate(panel => {
+    const host = panel.querySelector('.map-canvas')!;
+    const canvas = host.querySelector('canvas')!;
+    return {
+      position: getComputedStyle(host).position,
+      hostHeight: host.clientHeight === panel.clientHeight,
+      canvasHeight: canvas.clientHeight === panel.clientHeight,
+      canvasWidth: canvas.clientWidth === panel.clientWidth,
+      visible: canvas.clientHeight >= 300,
+    };
+  })).toEqual({ position: 'absolute', hostHeight: true, canvasHeight: true, canvasWidth: true, visible: true });
+}
 async function destination(page: Page, city = 'Taguig') {
   const input = page.getByRole('combobox', { name: 'Drop-off location' });
   await input.waitFor();
@@ -54,6 +114,7 @@ test('delivery validates contact details, medium parcel, and cancellation', asyn
   await expect(page.getByRole('heading', { name: 'Cancelled', exact: true })).toBeVisible();
 });
 test('delivery can be completed and history can be reset', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/delivery');
   await destination(page, 'Pasay');
   await page.getByLabel('Recipient name').fill('Demo Recipient');
@@ -108,6 +169,43 @@ test('invalid stored data and missing bookings recover safely', async ({ page })
   await expect(page.getByRole('heading', { name: 'Your first journey starts here.' })).toBeVisible();
   await page.goto('/bookings/GK-missing');
   await expect(page.getByRole('heading', { name: 'Booking not found' })).toBeVisible();
+});
+
+for (const service of ['ride', 'delivery']) {
+  test(`${service} unavailable drivers and failed requests can be retried`, async ({ page }) => {
+    await page.goto(`/${service}`);
+    await destination(page);
+    if (service === 'delivery') {
+      await page.getByLabel('Recipient name').fill('Demo Recipient');
+      await page.getByLabel('Recipient mobile number').fill('09123456789');
+    }
+    await page.getByLabel('Simulate unavailable drivers').check();
+    await page.getByRole('button', { name: `See ${service} fare` }).click();
+    await expect(page.locator('form').getByRole('alert')).toContainText('No demo drivers available');
+    await page.getByLabel('Simulate unavailable drivers').uncheck();
+    await page.getByRole('button', { name: `See ${service} fare` }).click();
+    await page.route('**/api/bookings', route => route.fulfill({ status: 503, json: { error: 'Demo booking service unavailable. Try again.' } }));
+    await page.getByRole('button', { name: `Confirm demo ${service}` }).click();
+    await expect(page.locator('form').getByRole('alert')).toContainText('Try again');
+    await page.unroute('**/api/bookings');
+    await page.getByRole('button', { name: `Confirm demo ${service}` }).click();
+    await expect(page).toHaveURL(/\/bookings\/GK-/);
+  });
+}
+
+test('malformed storage never resurrects cached bookings', async ({ page }) => {
+  await page.goto('/ride');
+  await destination(page);
+  await page.getByRole('button', { name: 'See ride fare' }).click();
+  await page.getByRole('button', { name: 'Confirm demo ride' }).click();
+  await expect(page).toHaveURL(/\/bookings\/GK-/);
+  await page.evaluate(() => {
+    localStorage.setItem('gokada.bookings.v1', '{broken');
+    window.dispatchEvent(new Event('gokada:bookings'));
+  });
+  await expect(page.getByRole('heading', { name: 'Booking not found' })).toBeVisible();
+  await page.getByRole('link', { name: 'Back to my bookings' }).click();
+  await expect(page.locator('.history-row')).toHaveCount(0);
 });
 test('responsive layouts, dialogs, and screenshots', async ({ page }) => {
   for (const width of [375, 390, 768, 1024, 1440]) {

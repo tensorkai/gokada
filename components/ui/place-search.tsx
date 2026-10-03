@@ -13,7 +13,7 @@ export function PlaceSearch({ label, value, onChange, kind }: { label: string; v
   return <div className={`place-field ${kind}`} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node)) setOpen(false); }}>
     <span className="location-dot" />
     <div className="place-input-wrap"><label htmlFor={id}>{label}</label><input id={id} role="combobox" aria-expanded={open} aria-autocomplete="list" aria-controls={`${id}-results`} aria-activedescendant={open && results[active] ? `${id}-${active}` : undefined} autoComplete="off" placeholder={kind === 'pickup' ? 'Where from?' : 'Where to?'} value={open ? query : value?.name || query} onFocus={() => { setQuery(''); setOpen(true); setActive(0); }} onChange={event => { setQuery(event.target.value); onChange(undefined); setOpen(true); setActive(0); }} onKeyDown={event => {
-      if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive(index => Math.min(index + 1, results.length - 1)); }
+      if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); setActive(index => Math.max(0, Math.min(index + 1, results.length - 1))); }
       if (event.key === 'ArrowUp') { event.preventDefault(); setActive(index => Math.max(0, index - 1)); }
       if (event.key === 'Enter' && open) { event.preventDefault(); if (results[active]) select(results[active]); }
       if (event.key === 'Escape') { setQuery(''); setOpen(false); }

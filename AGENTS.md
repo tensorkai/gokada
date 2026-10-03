@@ -4,7 +4,7 @@
 
 Gokada is a delivery and motorcycle taxi app for an actual hackathon project. Build toward usable booking flows for both services. See [README.md](README.md) for the current implementation status, proposed MVP, setup, and unresolved product decisions.
 
-The application currently remains a Next.js starter. Do not describe planned booking, maps, authentication, payments, or dispatch features as implemented until the repository supports them.
+The application implements browser-local demo booking flows and maps. Do not describe authentication, payments, real dispatch, or other planned features as implemented until the repository supports them.
 
 ## Product guidance
 
@@ -26,7 +26,7 @@ The application currently remains a Next.js starter. Do not describe planned boo
 ## Verification and handoff
 
 - For application changes, run `npm run lint` and `npm run build` where possible. These are separate checks; the build does not run ESLint.
-- There is no configured test runner or `npm test` script yet. Add meaningful tests as behavior warrants them; do not report tests that were not run.
+- Playwright browser and API tests run with `npm test`. Add meaningful tests as behavior warrants them; do not report tests that were not run.
 - For booking changes, verify both affected service flows and relevant validation, unavailable-service, cancellation, and completion states. Check phone layouts and keyboard access.
 - For documentation-only changes, check factual claims against repository files, relative links, and the diff; a production build is not required.
 - Report implemented behavior, validation performed, simulations, and any blocking setup clearly at handoff.

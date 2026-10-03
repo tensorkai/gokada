@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "playwright test",
-    "test:ui": "playwright test --ui"
+    "test:ui": "playwright test --ui",
+    "predev": "node scripts/prepare-map-assets.mjs",
+    "prebuild": "node scripts/prepare-map-assets.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -27,5 +29,6 @@
     "eslint-config-next": "16.3.8",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "license": "MIT"
 }

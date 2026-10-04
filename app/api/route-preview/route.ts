@@ -16,13 +16,13 @@ export async function GET(request: Request) {
   if (!coordinates(params.get('from')) && !coordinates(params.get('to'))) return Response.json({ mode: 'illustrative', coordinates: [start, end] });
   const fallback = { mode: 'fallback', coordinates: [start, end] };
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson&steps=false`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&alternatives=true&geometries=geojson&steps=false`;
     const response = await fetch(url, { signal: AbortSignal.timeout(8000), headers: { Accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) return Response.json(fallback);
     const data = await response.json() as { routes?: Array<{ distance: number; duration: number; geometry?: { coordinates?: [number, number][] } }> };
     const route = data.routes?.[0];
     if (!route?.geometry?.coordinates?.length) return Response.json(fallback);
-    return Response.json({ mode: 'road', coordinates: route.geometry.coordinates, distanceKm: Math.round(route.distance / 100) / 10, durationMinutes: Math.max(1, Math.round(route.duration / 60)) });
+    return Response.json({ mode: 'road', coordinates: route.geometry.coordinates, distanceKm: Math.round(route.distance / 100) / 10, durationMinutes: Math.max(1, Math.round(route.duration / 60)), routes: (data.routes || []).filter(item => item.geometry?.coordinates?.length).slice(0, 3).map(item => ({ coordinates: item.geometry!.coordinates, distanceKm: Math.round(item.distance / 100) / 10, durationMinutes: Math.max(1, Math.round(item.duration / 60)) })) });
   } catch {
     return Response.json(fallback);
   }

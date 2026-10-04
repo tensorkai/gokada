@@ -89,7 +89,7 @@ test('driver errors recover and customer cancellation removes the active job', a
   await page.goto('/driver');
   await page.route('**/api/bookings', route => route.fulfill({ status: 503, json: { error: 'Sample jobs unavailable. Try again.' } }));
   await page.getByRole('button', { name: 'Add demo ride', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Try again');
+  await expect(page.locator('.form-error')).toContainText('Try again');
   await page.unroute('**/api/bookings');
   await addJob(page, 'ride');
   await page.getByRole('button', { name: 'Go online', exact: true }).click();
@@ -97,7 +97,7 @@ test('driver errors recover and customer cancellation removes the active job', a
     Storage.prototype.setItem = () => { throw new DOMException('Storage unavailable', 'QuotaExceededError'); };
   });
   await page.getByRole('button', { name: 'Accept ride', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Enable browser storage');
+  await expect(page.locator('.form-error')).toContainText('Enable browser storage');
   await expect(page.getByRole('heading', { name: 'Your active job' })).toHaveCount(0);
   await page.reload();
   await page.getByRole('button', { name: 'Go online', exact: true }).click();

@@ -41,7 +41,12 @@ export function updateDriverBooking(id: string, action: 'accept' | 'start' | 'co
   if (!booking) throw new Error('This job is no longer available. Choose another request.');
   if (action === 'accept') {
     if (booking.status !== 'confirmed' || booking.acceptedByDemoDriver) throw new Error('This request has changed. Choose another job.');
-    if (items.some(item => item.acceptedByDemoDriver && ['arriving', 'in-progress'].includes(item.status))) throw new Error('Finish or cancel your active job before accepting another.');
+    const active = items.filter(item => item.acceptedByDemoDriver && ['arriving', 'in-progress'].includes(item.status));
+    if (active.length > 0) {
+      if (booking.service !== 'delivery' || active.some(item => item.service !== 'delivery')) {
+         throw new Error('Finish or cancel your active job before accepting another.');
+      }
+    }
     saveBooking({ ...booking, acceptedByDemoDriver: true, status: 'arriving' });
     return;
   }

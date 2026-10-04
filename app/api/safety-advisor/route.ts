@@ -3,22 +3,46 @@ import { formatRetrievedContext, getGroqConfig } from '@/lib/rag';
 
 type AdvisorRequest = {
   orders?: Array<{ id: string; service: 'ride' | 'delivery'; destination: string; etaMinutes: number }>;
-  conditions?: { heatIndexC: number; floodRisk: 'low' | 'medium' | 'high' };
+  conditions?: { heatIndexC: number; floodRisk: 'low' | 'medium' | 'high'; rainfallMm?: number; activeFloodHotspots?: string[] };
 };
 
 function localAdvice(input: AdvisorRequest) {
   const heatIndexC = input.conditions?.heatIndexC ?? 37;
-  const floodRisk = input.conditions?.floodRisk ?? 'medium';
+  const floodRisk = input.conditions?.floodRisk ?? 'low';
+  const rainfallMm = input.conditions?.rainfallMm ?? 0;
   const orders = input.orders ?? [];
+  const floodKeywords = ['espana', 'taft', 'caloocan', 'malabon', 'navotas', 'marikina', 'talayan', 'maysilo'];
+  
   const sortedOrders = [...orders].sort((a, b) => {
+    // If rain / flood risk is present, heavily penalize destinations known to flood
+    const aIsFloodProne = floodKeywords.some(kw => a.destination.toLowerCase().includes(kw));
+    const bIsFloodProne = floodKeywords.some(kw => b.destination.toLowerCase().includes(kw));
+    if (floodRisk !== 'low') {
+      if (aIsFloodProne && !bIsFloodProne) return 1;
+      if (!aIsFloodProne && bIsFloodProne) return -1;
+    }
     const score = (order: typeof a) => (order.service === 'delivery' ? 0 : 1) + order.etaMinutes / 100;
     return score(a) - score(b);
   });
-  const caution = floodRisk === 'high' ? 'Avoid low-lying streets and pause new pickups if water rises.' : heatIndexC >= 38 ? 'Take a shaded break after this sequence and carry water.' : 'Conditions are manageable. Keep the safer sequence below.';
+
+  const caution = floodRisk === 'high'
+    ? `Torrential rain (${rainfallMm.toFixed(1)} mm/h). Critical street flooding active. Avoid low-lying river basins and underpasses.`
+    : floodRisk === 'medium'
+    ? `Rainfall at ${rainfallMm.toFixed(1)} mm/h. Gutter-deep ponding reported at flood-prone points. Drive safely.`
+    : heatIndexC >= 38
+    ? 'High heat index. Take shaded rest breaks and carry extra water.'
+    : 'Roads are clear and dry. Manageable conditions for all demo routes.';
+
+  const routeAdvice = floodRisk === 'high'
+    ? 'Re-route away from España, Taft, and Marikina riverbanks. Use elevated bypass corridors (C-5 / EDSA).'
+    : floodRisk === 'medium'
+    ? 'Watch for standing water at notorious underpasses and outer lanes. Stick to well-drained avenues.'
+    : 'Direct road routes are clear. Proceed via normal navigation.';
+
   return {
     source: 'local-demo',
     summary: caution,
-    route: floodRisk === 'high' ? 'Use elevated main roads and avoid creek crossings.' : 'Stay on the marked main-road corridor for the next leg.',
+    route: routeAdvice,
     sortedOrderIds: sortedOrders.map(order => order.id),
   };
 }

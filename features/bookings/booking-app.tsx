@@ -72,7 +72,16 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
         <div className="service-tabs" role="group" aria-label="Choose service"><button aria-pressed={service === 'ride'} className={service === 'ride' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('ride')}><Motorcycle size={30} weight="duotone" /><span>Book a ride<small>Beat the city rush</small></span>{service === 'ride' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button><button aria-pressed={service === 'delivery'} className={service === 'delivery' ? 'service-tab selected' : 'service-tab'} onClick={() => changeService('delivery')}><Package size={29} weight="duotone" /><span>Send a parcel<small>A little door-to-door</small></span>{service === 'delivery' && <span className="tab-check"><Check size={12} weight="bold" /></span>}</button></div>
         <form onSubmit={submit} className="booking-form">
           <p className="demo-notice">Hackathon demo: simulated drivers and fares. No real dispatch or charges.</p>
-          <label className="demo-scenario"><input type="checkbox" checked={unavailable} onChange={event => { setUnavailable(event.target.checked); setError(''); }} />Simulate unavailable drivers</label>
+          <div className="demo-scenario-wrap">
+            <label className="demo-scenario"><input type="checkbox" checked={unavailable} onChange={event => { setUnavailable(event.target.checked); setError(''); }} />Simulate unavailable drivers</label>
+            <div className="demo-presets-row">
+              <span className="small muted">Demo trip presets:</span>
+              <button type="button" className="demo-preset-chip" onClick={() => { setPickup(findPlace('ayala')); setDestination(findPlace('bgc')); setReview(false); setError(''); }}>Ayala → BGC</button>
+              <button type="button" className="demo-preset-chip" onClick={() => { setPickup(findPlace('rizal')); setDestination(findPlace('moa')); setReview(false); setError(''); }}>Rizal Park → MOA</button>
+              <button type="button" className="demo-preset-chip" onClick={() => { setPickup(findPlace('eastwood')); setDestination(findPlace('capitol')); setReview(false); setError(''); }}>Eastwood → Capitol</button>
+              <button type="button" className="demo-preset-chip" onClick={() => { setPickup(findPlace('caloocan')); setDestination(findPlace('marikina')); setReview(false); setError(''); }}>Caloocan → Marikina</button>
+            </div>
+          </div>
           <div className="panel-heading">{review ? <button type="button" className="back-button" onClick={() => { setReview(false); setError(''); }}><ArrowLeft size={18} />Edit trip</button> : <h2>{service === 'ride' ? 'Let’s plan your ride' : 'Let’s send your parcel'}</h2>}<span className="leave-now"><Clock size={15} />{review ? 'Fare review' : 'Leave now'}</span></div>
           {!review ? <>
             <div className="locations"><PlaceSearch label="Pickup location" kind="pickup" value={pickup} onChange={place => { setPickup(place); setError(''); }} /><span className="location-connector" /><button className="swap-button" type="button" aria-label="Swap pickup and drop-off" onClick={() => { setPickup(destination); setDestination(pickup); }}><ArrowsDownUp size={19} /></button><PlaceSearch label="Drop-off location" kind="destination" value={destination} onChange={place => { setDestination(place); setError(''); }} /></div>

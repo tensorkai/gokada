@@ -5,7 +5,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { ArrowRight, CheckCircle, Motorcycle, Package, MapPin, Power } from '@phosphor-icons/react';
 import { MetroMap } from '@/components/maps/metro-map';
 import { Dialog } from '@/components/ui/dialog';
-import { findPlace } from '@/data/demo/places';
+import { places, findPlace } from '@/data/demo/places';
 import { resolvePlace } from '@/features/bookings/model';
 import { currency, isBooking, type Booking, type Service } from '@/features/bookings/model';
 import { saveBooking, updateDriverBooking, useBookings } from '@/features/bookings/store';
@@ -45,13 +45,32 @@ export function DriverDashboard() {
     }
   }
 
+  const [demoPickupId, setDemoPickupId] = useState('ayala');
+  const [demoDestinationId, setDemoDestinationId] = useState('bgc');
+
   async function addDemoJob(service: Service) {
     if (pending) return;
     setPending(true); setError(''); setNotice('');
+    const pickupId = demoPickupId;
+    let destinationId = demoDestinationId;
+    if (pickupId === destinationId) {
+      destinationId = pickupId === 'ayala' ? 'bgc' : 'ayala';
+    }
+    if (service === 'delivery' && destinationId === 'bgc' && demoDestinationId === 'bgc') {
+      destinationId = 'capitol';
+    }
     try {
       const response = await fetch('/api/bookings', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(12000),
-        body: JSON.stringify({ service, pickupId: 'ayala', destinationId: service === 'ride' ? 'bgc' : 'capitol', recipient: service === 'delivery' ? 'Demo Recipient' : '', phone: service === 'delivery' ? '09123456789' : '', parcel: 'small', notes: 'Sample job for the driver demo. Meet at the landmark entrance.' }),
+        body: JSON.stringify({
+          service,
+          pickupId,
+          destinationId,
+          recipient: service === 'delivery' ? 'Demo Recipient' : '',
+          phone: service === 'delivery' ? '09123456789' : '',
+          parcel: 'small',
+          notes: 'Sample job for the driver demo. Meet at the landmark entrance.',
+        }),
       });
       const data = await response.json();
       if (!response.ok || !isBooking(data.booking)) throw new Error(data.error || 'Could not create a sample job. Try again.');
@@ -89,7 +108,80 @@ export function DriverDashboard() {
           {selected && <><JobDetails job={selected} /><button className="primary-button driver-action" disabled={!online || pending} onClick={() => act(selected.id, 'accept')}>Accept {selected.service === 'ride' ? 'ride' : 'delivery'}<ArrowRight size={19} /></button>{!online && <p className="small muted">Go online above to accept this request.</p>}<button className="cancel-booking" onClick={() => { setSkipped(items => [...items, selected.id]); setNotice('Request skipped for this visit. The customer booking is unchanged.'); }}>Skip this request</button></>}
           {skipped.length > 0 && <button className="secondary-button" onClick={() => setSkipped([])}>Show skipped requests</button>}
         </>}
-        <div className="driver-demo-tools"><h3>Try the driver demo</h3><p>Add a fictional request, or <Link href="/ride">create a customer booking</Link>. Both views share the same saved jobs.</p><div className="button-row"><button className="secondary-button" disabled={pending} onClick={() => addDemoJob('ride')}>Add demo ride</button><button className="secondary-button" disabled={pending} onClick={() => addDemoJob('delivery')}>Add demo delivery</button></div>{pending && <p role="status">Adding sample job…</p>}</div>
+        <div className="driver-demo-tools">
+          <h3>Try the driver demo</h3>
+          <p>Add a fictional request, or <Link href="/ride">create a customer booking</Link>. Both views share the same saved jobs.</p>
+          <div className="demo-location-config">
+            <div className="demo-location-heading">
+              <label><strong>Configure demo booking locations</strong></label>
+              <span className="demo-tag">Configurable</span>
+            </div>
+            <div className="demo-location-fields">
+              <div className="field">
+                <label htmlFor="demo-pickup-select">Demo Pickup</label>
+                <select
+                  id="demo-pickup-select"
+                  aria-label="Demo pickup location"
+                  value={demoPickupId}
+                  onChange={e => setDemoPickupId(e.target.value)}
+                >
+                  {places.map(place => (
+                    <option key={place.id} value={place.id}>{place.name} ({place.city})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="demo-dest-select">Demo Drop-off</label>
+                <select
+                  id="demo-dest-select"
+                  aria-label="Demo drop-off location"
+                  value={demoDestinationId}
+                  onChange={e => setDemoDestinationId(e.target.value)}
+                >
+                  {places.map(place => (
+                    <option key={place.id} value={place.id}>{place.name} ({place.city})</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="demo-presets-row">
+              <span className="small muted">Presets:</span>
+              <button
+                type="button"
+                className="demo-preset-chip"
+                onClick={() => { setDemoPickupId('ayala'); setDemoDestinationId('bgc'); }}
+              >
+                Ayala → BGC
+              </button>
+              <button
+                type="button"
+                className="demo-preset-chip"
+                onClick={() => { setDemoPickupId('rizal'); setDemoDestinationId('moa'); }}
+              >
+                Rizal Park → MOA
+              </button>
+              <button
+                type="button"
+                className="demo-preset-chip"
+                onClick={() => { setDemoPickupId('eastwood'); setDemoDestinationId('megamall'); }}
+              >
+                Eastwood → Megamall
+              </button>
+              <button
+                type="button"
+                className="demo-preset-chip"
+                onClick={() => { setDemoPickupId('caloocan'); setDemoDestinationId('rizal'); }}
+              >
+                España / Caloocan → Manila
+              </button>
+            </div>
+          </div>
+          <div className="button-row">
+            <button className="secondary-button" disabled={pending} onClick={() => addDemoJob('ride')}>Add demo ride</button>
+            <button className="secondary-button" disabled={pending} onClick={() => addDemoJob('delivery')}>Add demo delivery</button>
+          </div>
+          {pending && <p role="status">Adding sample job…</p>}
+        </div>
       </section>
       <div className="driver-map"><MetroMap pickup={selected ? resolvePlace(selected.pickupId, selected.pickupPlace) : undefined} destination={selected ? resolvePlace(selected.destinationId, selected.destinationPlace) : undefined} progress={active ? (active.status === 'arriving' ? 0 : 0.5) : 0} showSafety /><p>Road route preview with live mapped cooling, shade, and convenience stops. Check PAGASA before departure.</p></div>
     </div>

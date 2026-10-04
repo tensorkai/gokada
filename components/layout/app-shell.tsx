@@ -16,9 +16,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     <header className="site-header">
       <Link className="wordmark" href="/" aria-label="Gokada home"><span className="brand-symbol"><ArrowUpRight weight="bold" size={26} /></span>gokada<span className="brand-period">.</span></Link>
       <nav className="main-nav" aria-label="Main navigation">
-        <Link href="/" className={!pathname.startsWith('/bookings') && pathname !== '/driver' ? 'nav-link active' : 'nav-link'}><Compass size={19} />Book a trip</Link>
+        <Link href="/" className={!pathname.startsWith('/bookings') && !pathname.startsWith('/driver') ? 'nav-link active' : 'nav-link'}><Compass size={19} />Book a trip</Link>
         <Link href="/bookings" className={pathname.startsWith('/bookings') ? 'nav-link active' : 'nav-link'}><ClockCounterClockwise size={19} />My bookings</Link>
         <Link href="/driver" className={pathname === '/driver' ? 'nav-link active' : 'nav-link'} aria-current={pathname === '/driver' ? 'page' : undefined}><Motorcycle size={19} />Driver view</Link>
+        <Link href="/driver/parcels" className={pathname === '/driver/parcels' ? 'nav-link active' : 'nav-link'} aria-current={pathname === '/driver/parcels' ? 'page' : undefined}><Package size={19} />Batch Parcels</Link>
       </nav>
       <div className="header-actions"><button className="area-button" onClick={() => setDialog('area')}><MapPin size={18} weight="fill" />Metro Manila<span className="tiny-dot" /></button><button className="icon-button help-button" aria-label="Help and demo guide" onClick={() => setDialog('help')}><Question size={23} /></button><button className="avatar-button" aria-label="Guest profile" onClick={() => setDialog('profile')}>G</button></div>
     </header>

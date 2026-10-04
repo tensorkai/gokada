@@ -8,11 +8,15 @@ export const metadata: Metadata = {
   description: "Book a motorcycle ride or send a parcel around Metro Manila. Gokada hackathon demo.",
 };
 
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-geist-sans', display: 'swap' });
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className="h-full antialiased"
+      className={`h-full antialiased ${inter.variable}`}
     >
       <body><a href="#main-content" className="skip-link">Skip to content</a><AppShell>{children}</AppShell></body>
     </html>

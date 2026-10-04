@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { formatRetrievedContext, getGroqConfig } from '@/lib/rag';
 
 type AdvisorRequest = {
   orders?: Array<{ id: string; service: 'ride' | 'delivery'; destination: string; etaMinutes: number }>;
@@ -23,9 +24,9 @@ function localAdvice(input: AdvisorRequest) {
 }
 
 async function groqAdvice(input: AdvisorRequest) {
-  const apiKey = process.env.GROQ_API_MODEL;
+  const { apiKey, model } = getGroqConfig();
   if (!apiKey) return undefined;
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', temperature: 0.1, max_tokens: 250, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a safety dispatcher for Metro Manila motorcycle and delivery work. Return only JSON with summary, route, and sortedOrderIds. Use the provided current conditions. Never invent closures or live observations. Keep guidance practical and mention PAGASA when flood risk is high.' }, { role: 'user', content: JSON.stringify(input) }] }), signal: AbortSignal.timeout(12000) });
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model, temperature: 0.1, max_tokens: 250, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a safety dispatcher running on Groq GPT OSS for Metro Manila motorcycle and delivery work. Return only JSON with summary, route, and sortedOrderIds. Use only the retrieved context. Never invent closures or live observations. Keep guidance practical and mention PAGASA when flood risk is high.' }, { role: 'user', content: `Retrieved safety context:\n${formatRetrievedContext('route order flood heat', input)}\n\nRequest:\n${JSON.stringify(input)}` }] }), signal: AbortSignal.timeout(12000) });
   if (!response.ok) throw new Error('Groq advisor unavailable');
   const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
   const content = data.choices?.[0]?.message?.content;
@@ -33,7 +34,7 @@ async function groqAdvice(input: AdvisorRequest) {
   const advice = JSON.parse(content) as { summary?: string; route?: string; sortedOrderIds?: string[] };
   if (typeof advice.summary !== 'string' || typeof advice.route !== 'string' || !Array.isArray(advice.sortedOrderIds)) throw new Error('Groq advisor returned invalid advice');
   const validIds = new Set((input.orders || []).map(order => order.id));
-  return { source: 'groq', summary: advice.summary, route: advice.route, sortedOrderIds: advice.sortedOrderIds.filter(id => validIds.has(id)) };
+  return { source: 'groq-gpt-oss', summary: advice.summary, route: advice.route, sortedOrderIds: advice.sortedOrderIds.filter(id => validIds.has(id)) };
 }
 
 export async function POST(request: Request) {

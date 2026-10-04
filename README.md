@@ -70,10 +70,10 @@ Optional variables belong in your existing `.env.local`. No environment variable
 | `GOKADA_APP_URL` | Public URL of the deployed Gokada main app, sent to the separate AI deployment as its source and callback URL. |
 | `AI_ASSISTANT_APP_URL` | Public POST URL of the separate Vercel AI assistant deployment. It receives `type`, `conditions`, `orders`, `sourceApp`, and `callback`; it should return `summary`, `route`, and `sortedOrderIds`. |
 | `VERCEL_AI_ADVISOR_URL` | Backward-compatible alias for `AI_ASSISTANT_APP_URL`; use `AI_ASSISTANT_APP_URL` for the two-deployment setup. |
-| `GROQ_API_MODEL` | Server-only Groq API key used by the safety brief and Safety Chat. Despite the legacy name, this variable contains the key supplied by the deployment. |
-| `GROQ_MODEL` | Optional Groq model name; defaults to `llama-3.3-70b-versatile`. |
+| `GROQ_API_MODEL` | Server-only Groq model name. Set this to `openai/gpt-oss-120b`; the current legacy `gsk_...` value is also accepted as the API key and selects GPT OSS automatically. |
+| `GROQ_API_KEY` | Optional server-only Groq API key. Use this when `GROQ_API_MODEL` contains the model name. |
 
-Coordinate route previews request road geometry from OSRM and fall back to a labeled straight connection when the public router is unavailable. Safety refreshes use Open-Meteo current weather, the PAGASA flood page, and Overpass/OpenStreetMap amenity data. OpenStreetMap amenities and weather model data can be incomplete or delayed; the app does not claim that every shaded area, cooling station, convenience store, flooded street, or closure is mapped. Pricing and ETA remain illustrative. Never commit credentials.
+Coordinate route previews request road geometry from OSRM and fall back to a labeled straight connection when the public router is unavailable. Safety refreshes use Open-Meteo current weather, the PAGASA flood page, and Overpass/OpenStreetMap amenity data. Safety Chat and order advice retrieve relevant live snapshot fields through `lib/rag.ts` before calling Groq GPT OSS. OpenStreetMap amenities and weather model data can be incomplete or delayed; the app does not claim that every shaded area, cooling station, convenience store, flooded street, or closure is mapped. Pricing and ETA remain illustrative. Never commit credentials.
 
 ## Verification
 

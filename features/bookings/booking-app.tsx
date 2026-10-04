@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRight, ArrowLeft, ArrowsDownUp, Motorcycle, Package, Crosshair, Clock, ShieldCheck, MapPin, CaretRight, Wallet, Check, Leaf, Lightning, ArrowUpRight, Info } from '@phosphor-icons/react';
@@ -25,8 +25,9 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
   const [locationNotice, setLocationNotice] = useState('');
   const [fareInfo, setFareInfo] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
+  const [pinTarget, setPinTarget] = useState<'pickup' | 'destination'>('destination');
   const bookings = useBookings();
-  const input: BookingInput = { service, pickupId: pickup?.id || '', destinationId: destination?.id || '', recipient, phone, parcel, notes };
+  const input: BookingInput = { service, pickupId: pickup?.id || '', destinationId: destination?.id || '', pickupPlace: pickup, destinationPlace: destination, recipient, phone, parcel, notes };
   const quote = pickup && destination && pickup.id !== destination.id ? getQuote(input) : null;
   const changeService = (next: Service) => { setService(next); setReview(false); setError(''); router.push(next === 'ride' ? '/ride' : '/delivery'); };
   const locate = () => {
@@ -40,6 +41,12 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
       setLocating(false);
     }, () => { setError('We couldn’t access your location. Allow location access or choose a pickup landmark.'); setLocating(false); }, { timeout: 10000, maximumAge: 60000 });
   };
+  const pinLocation = useCallback((coordinates: [number, number]) => {
+    const [longitude, latitude] = coordinates;
+    const place: Place = { id: `pin-${Date.now()}`, name: 'Pinned map location', city: 'Metro Manila', address: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`, coordinates };
+    if (pinTarget === 'pickup') setPickup(place); else setDestination(place);
+    setLocationNotice(`${pinTarget === 'pickup' ? 'Pickup' : 'Drop-off'} pinned on the map.`); setError('');
+  }, [pinTarget]);
   const submit = async (event: React.SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const valid = validateBooking(input);
@@ -81,7 +88,7 @@ export function BookingApp({ initialService = 'ride' }: { initialService?: Servi
           <p className="booking-disclaimer">{review ? 'This booking simulates a trip. No real driver is dispatched.' : <><ShieldCheck size={14} />Know your fare before you go. No surprises.</>}</p>
         </form>
       </div>
-      <MetroMap pickup={pickup} destination={destination} />
+      <div className="map-booking-tools"><span>Pin a custom location</span><button type="button" className={pinTarget === 'pickup' ? 'selected' : ''} onClick={() => setPinTarget('pickup')}>Pickup</button><button type="button" className={pinTarget === 'destination' ? 'selected' : ''} onClick={() => setPinTarget('destination')}>Drop-off</button></div><MetroMap pickup={pickup} destination={destination} onPin={pinLocation} />
     </div>
     <div className="below-booking"><section className="popular-section"><div className="section-heading"><h2>Places to be</h2><span>Popular demo stops</span></div><div className="destination-list">{places.slice(1, 4).map((place, index) => <button className="destination-row" key={place.id} onClick={() => { setDestination(place); setReview(false); setError(''); window.scrollTo({ top: 120, behavior: 'smooth' }); }}><span className={`destination-icon destination-${index}`}><MapPin size={20} weight="duotone" /></span><span><strong>{place.name}</strong><small>{place.city}</small></span><ArrowUpRight size={18} /></button>)}</div></section><section className="everyday-card"><div><span className="everyday-icon"><Leaf size={23} /></span><h2>Small errands.<br />Big time back.</h2><p>Forgotten keys, a thoughtful gift, the little things that can’t wait.</p><button onClick={() => { changeService('delivery'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Send something good<ArrowUpRight size={17} /></button></div><div className="parcel-art" aria-hidden="true"><div className="parcel-orbit orbit-one" /><div className="parcel-orbit orbit-two" /><Package size={114} weight="duotone" /><span className="parcel-spark"><Lightning size={23} weight="fill" /></span></div></section></div>
     {bookings.length > 0 && <section className="recent-strip"><div><Clock size={20} /><span>Your latest trip<strong>{findPlace(bookings[0].destinationId)?.name}</strong></span></div><Link href={`/bookings/${bookings[0].id}`}>View booking<ArrowRight size={18} /></Link></section>}

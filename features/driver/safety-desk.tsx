@@ -1,45 +1,34 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowUpRight, CloudRain, Drop, Fire, Sparkle, Warning } from '@phosphor-icons/react';
-import { findPlace } from '@/data/demo/places';
+import { ArrowUpRight, ChatCircle, CloudRain, Drop, Fire, PaperPlaneRight, Sparkle, Warning } from '@phosphor-icons/react';
+import { resolvePlace } from '@/features/bookings/model';
 import { currency, type Booking } from '@/features/bookings/model';
 
+type Safety = { fetchedAt: string; weather: { temperatureC: number; humidity: number; heatIndexC: number; apparentTemperatureC: number; precipitationMm: number; windKph: number }; flood: { risk: 'low' | 'medium' | 'high'; pagasaWatch: boolean; source: string; note: string }; places: Array<{ id: string; name: string; type: 'cooling' | 'shade' | 'convenience'; detail?: string }> };
+type Advice = { source: string; summary: string; route: string; sortedOrderIds: string[] };
 type Props = { orders: Booking[]; onApplyOrder: (ids: string[]) => void };
-type Advice = { source: 'vercel-ai' | 'local-demo' | 'local-fallback'; summary: string; route: string; sortedOrderIds: string[] };
 
 export function SafetyDesk({ orders, onApplyOrder }: Props) {
-  const [advice, setAdvice] = useState<Advice | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [ordered, setOrdered] = useState(false);
-  const heatIndexC = 37;
-  const floodRisk = 'medium' as const;
-  const visibleOrders = useMemo(() => {
-    if (!ordered || !advice) return orders;
-    const rank = new Map(advice.sortedOrderIds.map((id, index) => [id, index]));
-    return [...orders].sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999));
-  }, [advice, orders, ordered]);
-
+  const [safety, setSafety] = useState<Safety | null>(null); const [advice, setAdvice] = useState<Advice | null>(null); const [loading, setLoading] = useState(false); const [ordered, setOrdered] = useState(false); const [message, setMessage] = useState(''); const [chat, setChat] = useState<Array<{ role: 'assistant' | 'user'; content: string }>>([]); const [chatLoading, setChatLoading] = useState(false);
+  const visibleOrders = useMemo(() => { if (!ordered || !advice) return orders; const rank = new Map(advice.sortedOrderIds.map((id, index) => [id, index])); return [...orders].sort((a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999)); }, [advice, orders, ordered]);
   async function refreshAdvice() {
     setLoading(true);
     try {
-      const response = await fetch('/api/safety-advisor', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conditions: { heatIndexC, floodRisk }, orders: orders.map(order => ({ id: order.id, service: order.service, destination: findPlace(order.destinationId)?.name ?? 'Unknown stop', etaMinutes: order.quote.minutes })) }),
-      });
-      if (!response.ok) throw new Error('Could not reach the advisor.');
-      const data = await response.json() as Advice;
-      setAdvice(data); setOrdered(false);
-    } catch { setAdvice({ source: 'local-fallback', summary: 'The advisor is unavailable. Keep the shorter delivery sequence first and avoid flooded streets.', route: 'Use elevated main roads and avoid creek crossings.', sortedOrderIds: orders.map(order => order.id) }); }
+      const liveResponse = await fetch('/api/safety-data'); if (!liveResponse.ok) throw new Error('Live safety sources unavailable'); const live = await liveResponse.json() as Safety; setSafety(live);
+      const response = await fetch('/api/safety-advisor', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ conditions: { heatIndexC: live.weather.heatIndexC, floodRisk: live.flood.risk }, orders: orders.map(order => ({ id: order.id, service: order.service, destination: resolvePlace(order.destinationId, order.destinationPlace)?.name ?? 'Unknown stop', etaMinutes: order.quote.minutes })) }) });
+      if (!response.ok) throw new Error('Could not reach the advisor.'); const data = await response.json() as Advice; setAdvice(data); setOrdered(false);
+    } catch { setAdvice({ source: 'local-fallback', summary: 'Live safety sources are unavailable. Refresh before moving and avoid low crossings.', route: 'Use the marked route only after checking PAGASA flood monitoring.', sortedOrderIds: orders.map(order => order.id) }); }
     finally { setLoading(false); }
   }
-
-  return <section className="safety-desk" aria-labelledby="safety-desk-title">
-    <div className="safety-desk-heading"><div><div className="safety-kicker"><Sparkle size={15} weight="fill" />Two-app safety bridge</div><h2 id="safety-desk-title">Heat and flood watch</h2><p>Gokada sends this shift to a separate Vercel AI app for route and order advice.</p></div><span className={`advisor-status ${advice?.source === 'vercel-ai' ? 'connected' : ''}`}><span />{advice?.source === 'vercel-ai' ? 'AI app connected' : 'AI app not connected'}</span></div>
-    <div className="safety-metrics"><div className="safety-metric heat"><Fire size={20} weight="fill" /><span><small>Heat index</small><strong>{heatIndexC}°C</strong><em>Elevated</em></span></div><div className="safety-metric flood"><CloudRain size={20} weight="fill" /><span><small>Flood exposure</small><strong>{floodRisk === 'medium' ? 'Watch' : floodRisk}</strong><em>Check low roads</em></span></div><div className="safety-metric"><Drop size={20} weight="fill" /><span><small>Shift guidance</small><strong>{orders.length} requests</strong><em>{orders.length ? 'Ready to sequence' : 'Add a request'}</em></span></div></div>
-    <div className="safety-desk-actions"><button className="primary-button" onClick={refreshAdvice} disabled={loading}>{loading ? 'Checking conditions…' : advice ? 'Refresh safety brief' : 'Ask safety assistant'}<ArrowUpRight size={18} /></button>{advice && <button className="secondary-button" onClick={() => { setOrdered(true); onApplyOrder(advice.sortedOrderIds); }}>Apply safer order</button>}</div>
-    {advice ? <div className="safety-recommendation" role="status"><div className="recommendation-icon"><Warning size={20} weight="fill" /></div><div><strong>{advice.summary}</strong><p>{advice.route}</p><small>{advice.source === 'vercel-ai' ? 'Returned by the separate Vercel AI deployment.' : 'Local fallback only. Set AI_ASSISTANT_APP_URL on the Gokada deployment to connect the second app.'}</small></div></div> : <p className="safety-empty">Ask the separate AI app to combine current conditions with your open requests.</p>}
-    {ordered && <p className="safety-applied" role="status">Safer order applied to the request list below.</p>}
-    {ordered && visibleOrders.length > 0 && <div className="safety-order-preview"><strong>Recommended sequence</strong>{visibleOrders.slice(0, 3).map((order, index) => <span key={order.id}><b>{index + 1}</b>{order.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'} to {findPlace(order.destinationId)?.name}<em>{currency(order.quote.total)}</em></span>)}</div>}
+  async function sendMessage(event: React.FormEvent) { event.preventDefault(); const text = message.trim(); if (!text || chatLoading) return; setMessage(''); setChat(items => [...items, { role: 'user', content: text }]); setChatLoading(true); try { const response = await fetch('/api/safety-chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, safety }) }); const data = await response.json(); setChat(items => [...items, { role: 'assistant', content: response.ok ? data.reply : 'The safety chat is unavailable. Refresh the live brief and check PAGASA.' }]); } catch { setChat(items => [...items, { role: 'assistant', content: 'The safety chat is unavailable. Refresh the live brief and check PAGASA.' }]); } finally { setChatLoading(false); } }
+  const heat = safety?.weather.heatIndexC; const flood = safety?.flood.risk;
+  return <section className="safety-desk" aria-labelledby="safety-desk-title"><div className="safety-desk-heading"><div><div className="safety-kicker"><Sparkle size={15} weight="fill" />Live safety feed</div><h2 id="safety-desk-title">Heat and flood watch</h2><p>Refresh for current weather, PAGASA flood status, and mapped safety stops.</p></div><span className={`advisor-status ${safety ? 'connected' : ''}`}><span />{safety ? `Updated ${new Date(safety.fetchedAt).toLocaleTimeString('en-PH', { hour: 'numeric', minute: '2-digit' })}` : 'Not refreshed'}</span></div>
+    <div className="safety-metrics"><div className="safety-metric heat"><Fire size={20} weight="fill" /><span><small>Heat index</small><strong>{heat === undefined ? '—' : `${heat}°C`}</strong><em>{heat === undefined ? 'Refresh to check' : heat >= 42 ? 'Danger' : heat >= 33 ? 'Caution' : 'Lower risk'}</em></span></div><div className="safety-metric flood"><CloudRain size={20} weight="fill" /><span><small>Flood exposure</small><strong>{flood ? flood[0].toUpperCase() + flood.slice(1) : '—'}</strong><em>{safety?.flood.pagasaWatch ? 'PAGASA flood watch' : 'PAGASA status checked'}</em></span></div><div className="safety-metric"><Drop size={20} weight="fill" /><span><small>Mapped stops</small><strong>{safety ? safety.places.length : '—'}</strong><em>Cooling, shade, stores</em></span></div></div>
+    {safety && <p className="safety-source-note">{safety.flood.note} Sources: Open-Meteo, PAGASA, and OpenStreetMap. Mapped amenities depend on current map coverage.</p>}
+    <div className="safety-desk-actions"><button className="primary-button" onClick={refreshAdvice} disabled={loading}>{loading ? 'Refreshing live conditions…' : safety ? 'Refresh safety brief' : 'Get live safety brief'}<ArrowUpRight size={18} /></button>{advice && <button className="secondary-button" onClick={() => { setOrdered(true); onApplyOrder(advice.sortedOrderIds); }}>Apply safer order</button>}</div>
+    {advice && <div className="safety-recommendation" role="status"><div className="recommendation-icon"><Warning size={20} weight="fill" /></div><div><strong>{advice.summary}</strong><p>{advice.route}</p><small>{advice.source === 'local-fallback' ? 'Fallback guidance. Live source refresh failed.' : 'Generated from the current safety brief.'}</small></div></div>}
+    {ordered && <p className="safety-applied" role="status">Safer order applied to the request list below.</p>}{ordered && visibleOrders.length > 0 && <div className="safety-order-preview"><strong>Recommended sequence</strong>{visibleOrders.slice(0, 3).map((order, index) => <span key={order.id}><b>{index + 1}</b>{order.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'} to {resolvePlace(order.destinationId, order.destinationPlace)?.name}<em>{currency(order.quote.total)}</em></span>)}</div>}
+    <div className="safety-chat"><div className="safety-chat-heading"><span><ChatCircle size={20} /><strong>Safety chat</strong></span><small>Ask about the live brief</small></div><div className="safety-chat-messages" aria-live="polite">{chat.length === 0 && <p className="safety-chat-empty">Ask “Is it safe to take this job?” or “Where can I cool down?”</p>}{chat.map((item, index) => <p className={`safety-chat-message ${item.role}`} key={`${item.role}-${index}`}>{item.content}</p>)}{chatLoading && <p className="safety-chat-message assistant">Checking the latest safety brief…</p>}</div><form onSubmit={sendMessage} className="safety-chat-form"><input value={message} onChange={event => setMessage(event.target.value)} placeholder="Ask about heat, flooding, or stops" aria-label="Safety chat message" maxLength={500} /><button type="submit" aria-label="Send safety chat message" disabled={chatLoading || !message.trim()}><PaperPlaneRight size={17} /></button></form></div>
   </section>;
 }

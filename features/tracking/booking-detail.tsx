@@ -4,9 +4,8 @@ import { useState, useSyncExternalStore } from 'react';
 import { ArrowLeft, ArrowRight, Check, ShieldCheck, Motorcycle, Package, Star, Wallet, CheckCircle, XCircle } from '@phosphor-icons/react';
 import { MetroMap } from '@/components/maps/metro-map';
 import { Dialog } from '@/components/ui/dialog';
-import { findPlace } from '@/data/demo/places';
 import { useBookings, saveBooking } from '@/features/bookings/store';
-import { currency, nextStatus, statusLabel, type BookingStatus } from '@/features/bookings/model';
+import { currency, nextStatus, resolvePlace, statusLabel, type BookingStatus } from '@/features/bookings/model';
 const subscribe = () => () => {};
 const stages: BookingStatus[] = ['confirmed', 'arriving', 'in-progress', 'completed'];
 
@@ -18,7 +17,7 @@ export function BookingDetail({ id }: { id: string }) {
   const [error, setError] = useState('');
   if (!ready) return <div className="content-page"><div className="loading-block" role="status">Loading your booking…</div></div>;
   if (!booking) return <div className="content-page empty-state"><XCircle size={45} /><h1>Booking not found</h1><p>This demo booking may be on another browser or may have been cleared.</p><Link className="primary-button" href="/bookings">Back to my bookings<ArrowRight size={18} /></Link></div>;
-  const pickup = findPlace(booking.pickupId), destination = findPlace(booking.destinationId);
+  const pickup = resolvePlace(booking.pickupId, booking.pickupPlace), destination = resolvePlace(booking.destinationId, booking.destinationPlace);
   const finished = booking.status === 'completed' || booking.status === 'cancelled';
   const stage = stages.indexOf(booking.status);
   const update = (status: BookingStatus) => { try { saveBooking({ ...booking, status }); setError(''); setCancelOpen(false); } catch { setError('Could not save this update. Enable browser storage and try again.'); } };

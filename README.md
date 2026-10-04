@@ -25,7 +25,7 @@ No account, API key, database, or payment setup is required for the booking demo
 - An unavailable-driver scenario that can be turned off to retry.
 - Responsive layouts, dialogs, map retry, and errors for invalid requests or unavailable browser storage.
 - Driver workspace at `/driver`: online/offline availability, ride/delivery requests, sample jobs, accept/skip, pickup, completion, cancellation, and completed-job fare totals shared with the customer view in this browser.
-- Driver Safety Desk at `/driver`: a clearly labeled demo heat index and flood watch, a safer-route suggestion, and AI-assisted order sequencing. The Gokada deployment sends the shift to a separate Vercel AI deployment through a server-side bridge; without that connection it uses a deterministic local demo response.
+- Driver Safety Desk at `/driver`: live current weather and calculated heat index from Open-Meteo, PAGASA flood-watch status when available, a Groq-powered safety brief and chat, and mapped cooling, shade, and convenience stops from OpenStreetMap. Data cards show their refresh time and source status; they are decision support and do not replace official emergency warnings.
 
 Bookings, drivers, availability, fares, payment choices, and progress are simulated. No real driver is dispatched and no money is collected. There is no authentication, shared database, live tracking, dispatch system, payment processing, delivery proof, or production driver/admin app. History is limited to the latest 100 bookings in this browser; use fictional contact details.
 
@@ -50,7 +50,7 @@ This is one simulated driver using browser-local data, not authenticated assignm
 
 ## Demo fixtures, not operating policies
 
-The existing implementation uses Metro Manila landmarks, PHP prices, and Philippine mobile-number validation. These are sample fixtures, not an agreed service area or commercial policy. Ride base fare is 40, delivery base is 55, and estimated distance costs 10 per kilometer. Distance is straight-line distance multiplied by 1.35 (minimum 1 km); estimated minutes are distance multiplied by 3.2 (minimum 5). Small parcels are displayed as up to 3 kg; medium parcels as up to 5 kg with an extra 20. Cancellation is simulated without a fee, including during a journey.
+The existing implementation uses Metro Manila landmarks, PHP prices, and Philippine mobile-number validation. These are sample fixtures, not an agreed service area or commercial policy. Ride base fare is 40, delivery base is 55, and the fare estimate remains illustrative. Small parcels are displayed as up to 3 kg; medium parcels as up to 5 kg with an extra 20. Cancellation is simulated without a fee, including during a journey.
 
 Change fixtures in [places.ts](data/demo/places.ts), validation and pricing in [model.ts](features/bookings/model.ts), and matching form copy in [booking-app.tsx](features/bookings/booking-app.tsx). Actual region, currency, parcel limits, cancellation policy, and fare rules still require team decisions.
 
@@ -70,8 +70,10 @@ Optional variables belong in your existing `.env.local`. No environment variable
 | `GOKADA_APP_URL` | Public URL of the deployed Gokada main app, sent to the separate AI deployment as its source and callback URL. |
 | `AI_ASSISTANT_APP_URL` | Public POST URL of the separate Vercel AI assistant deployment. It receives `type`, `conditions`, `orders`, `sourceApp`, and `callback`; it should return `summary`, `route`, and `sortedOrderIds`. |
 | `VERCEL_AI_ADVISOR_URL` | Backward-compatible alias for `AI_ASSISTANT_APP_URL`; use `AI_ASSISTANT_APP_URL` for the two-deployment setup. |
+| `GROQ_API_MODEL` | Server-only Groq API key used by the safety brief and Safety Chat. Despite the legacy name, this variable contains the key supplied by the deployment. |
+| `GROQ_MODEL` | Optional Groq model name; defaults to `llama-3.3-70b-versatile`. |
 
-The route-preview API returns deterministic illustrative geometry without an external routing request. Pricing and ETA remain illustrative. Never commit credentials.
+Coordinate route previews request road geometry from OSRM and fall back to a labeled straight connection when the public router is unavailable. Safety refreshes use Open-Meteo current weather, the PAGASA flood page, and Overpass/OpenStreetMap amenity data. OpenStreetMap amenities and weather model data can be incomplete or delayed; the app does not claim that every shaded area, cooling station, convenience store, flooded street, or closure is mapped. Pricing and ETA remain illustrative. Never commit credentials.
 
 ## Verification
 

@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle, Motorcycle, Package, MapPin, Power } from '@ph
 import { MetroMap } from '@/components/maps/metro-map';
 import { Dialog } from '@/components/ui/dialog';
 import { findPlace } from '@/data/demo/places';
+import { resolvePlace } from '@/features/bookings/model';
 import { currency, isBooking, type Booking, type Service } from '@/features/bookings/model';
 import { saveBooking, updateDriverBooking, useBookings } from '@/features/bookings/store';
 import { SafetyDesk } from './safety-desk';
@@ -90,7 +91,7 @@ export function DriverDashboard() {
         </>}
         <div className="driver-demo-tools"><h3>Try the driver demo</h3><p>Add a fictional request, or <Link href="/ride">create a customer booking</Link>. Both views share the same saved jobs.</p><div className="button-row"><button className="secondary-button" disabled={pending} onClick={() => addDemoJob('ride')}>Add demo ride</button><button className="secondary-button" disabled={pending} onClick={() => addDemoJob('delivery')}>Add demo delivery</button></div>{pending && <p role="status">Adding sample job…</p>}</div>
       </section>
-      <div className="driver-map"><MetroMap pickup={selected ? findPlace(selected.pickupId) : undefined} destination={selected ? findPlace(selected.destinationId) : undefined} progress={active ? (active.status === 'arriving' ? 0 : 0.5) : 0} /><p>Illustrative connection only. This map does not provide turn-by-turn directions.</p></div>
+      <div className="driver-map"><MetroMap pickup={selected ? resolvePlace(selected.pickupId, selected.pickupPlace) : undefined} destination={selected ? resolvePlace(selected.destinationId, selected.destinationPlace) : undefined} progress={active ? (active.status === 'arriving' ? 0 : 0.5) : 0} showSafety /><p>Road route preview with live mapped cooling, shade, and convenience stops. Check PAGASA before departure.</p></div>
     </div>
     <section className="driver-completed"><div className="driver-section-title"><h2>Completed by you</h2><CheckCircle size={24} /></div>{completed.length ? completed.map(job => <Link className="driver-completed-row" href={`/bookings/${job.id}`} key={job.id}><span><strong>{findPlace(job.destinationId)?.name}</strong><small>{job.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'} · {job.id.slice(0, 11)}</small></span><b>{currency(job.quote.total)}</b></Link>) : <p>Complete an accepted job to see it here. Cancelled jobs do not count toward your totals.</p>}</section>
     <Dialog open={cancelId !== null} title="Cancel this demo job?" onClose={() => setCancelId(null)}><p>This also cancels the customer’s booking in this browser. No fee is charged.</p><div className="button-row"><button className="secondary-button" onClick={() => setCancelId(null)}>Keep active job</button><button className="danger-button" onClick={() => cancelId && act(cancelId, 'cancel')}>Cancel demo job</button></div></Dialog>
@@ -98,6 +99,6 @@ export function DriverDashboard() {
 }
 
 function JobDetails({ job }: { job: Booking }) {
-  const pickup = findPlace(job.pickupId), destination = findPlace(job.destinationId);
+const pickup = resolvePlace(job.pickupId, job.pickupPlace), destination = resolvePlace(job.destinationId, job.destinationPlace);
   return <div className="driver-job-details"><div className="driver-job-fare"><span>{job.service === 'ride' ? 'Passenger ride' : 'Parcel delivery'}<small>{job.quote.distance} km · ~{job.quote.minutes} min, illustrative</small></span><strong>{currency(job.quote.total)}</strong></div><div className="review-route"><div><span className="route-letter">A</span><span><small>Pickup</small><strong>{pickup?.name}</strong><p>{pickup?.address}</p></span></div><div><span className="route-letter dark">B</span><span><small>Drop-off</small><strong>{destination?.name}</strong><p>{destination?.address}</p></span></div></div>{job.service === 'delivery' && <div className="driver-recipient"><strong>{job.recipient}</strong><p>{job.phone} · {job.parcel === 'small' ? 'Small parcel, up to 3 kg' : 'Medium parcel, up to 5 kg'}</p></div>}{job.notes && <p className="driver-note">Customer note: {job.notes}</p>}<p className="small muted">Demo cash fare. No payment is collected.</p></div>;
 }

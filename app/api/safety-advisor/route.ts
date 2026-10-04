@@ -22,6 +22,20 @@ function localAdvice(input: AdvisorRequest) {
   };
 }
 
+async function groqAdvice(input: AdvisorRequest) {
+  const apiKey = process.env.GROQ_API_MODEL;
+  if (!apiKey) return undefined;
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', { method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile', temperature: 0.1, max_tokens: 250, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: 'You are a safety dispatcher for Metro Manila motorcycle and delivery work. Return only JSON with summary, route, and sortedOrderIds. Use the provided current conditions. Never invent closures or live observations. Keep guidance practical and mention PAGASA when flood risk is high.' }, { role: 'user', content: JSON.stringify(input) }] }), signal: AbortSignal.timeout(12000) });
+  if (!response.ok) throw new Error('Groq advisor unavailable');
+  const data = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+  const content = data.choices?.[0]?.message?.content;
+  if (!content) throw new Error('Groq advisor returned no content');
+  const advice = JSON.parse(content) as { summary?: string; route?: string; sortedOrderIds?: string[] };
+  if (typeof advice.summary !== 'string' || typeof advice.route !== 'string' || !Array.isArray(advice.sortedOrderIds)) throw new Error('Groq advisor returned invalid advice');
+  const validIds = new Set((input.orders || []).map(order => order.id));
+  return { source: 'groq', summary: advice.summary, route: advice.route, sortedOrderIds: advice.sortedOrderIds.filter(id => validIds.has(id)) };
+}
+
 export async function POST(request: Request) {
   let input: AdvisorRequest;
   try {
@@ -30,7 +44,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Send a valid safety brief.' }, { status: 400 });
   }
 
-  // This endpoint is the bridge between two separately deployed Vercel apps:
+  try {
+    const advice = await groqAdvice(input);
+    if (advice) return NextResponse.json(advice);
+  } catch { /* Continue to the configured bridge or deterministic fallback. */ }
+
+  // This endpoint remains a bridge for deployments that already use a separate AI app:
   // the Gokada app and the external AI safety assistant app.
   const endpoint = process.env.AI_ASSISTANT_APP_URL || process.env.VERCEL_AI_ADVISOR_URL;
   if (!endpoint) return NextResponse.json(localAdvice(input));

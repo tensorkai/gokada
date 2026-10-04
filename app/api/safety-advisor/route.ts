@@ -30,14 +30,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Send a valid safety brief.' }, { status: 400 });
   }
 
-  const endpoint = process.env.VERCEL_AI_ADVISOR_URL;
+  // This endpoint is the bridge between two separately deployed Vercel apps:
+  // the Gokada app and the external AI safety assistant app.
+  const endpoint = process.env.AI_ASSISTANT_APP_URL || process.env.VERCEL_AI_ADVISOR_URL;
   if (!endpoint) return NextResponse.json(localAdvice(input));
 
   try {
+    const requestUrl = new URL(request.url);
+    const mainAppUrl = process.env.GOKADA_APP_URL || requestUrl.origin;
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...input, app: 'gokada-driver-demo', version: 'safety-desk-v1' }),
+      body: JSON.stringify({
+        type: 'safety-advice',
+        ...input,
+        sourceApp: { name: 'Gokada main app', url: mainAppUrl },
+        callback: { safetyAdviceUrl: `${mainAppUrl}/api/safety-advisor` },
+        version: 'safety-desk-v1',
+      }),
       signal: AbortSignal.timeout(9000),
     });
     if (!response.ok) throw new Error('Advisor returned an error.');

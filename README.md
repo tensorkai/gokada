@@ -25,7 +25,7 @@ No account, API key, database, or payment setup is required for the booking demo
 - An unavailable-driver scenario that can be turned off to retry.
 - Responsive layouts, dialogs, map retry, and errors for invalid requests or unavailable browser storage.
 - Driver workspace at `/driver`: online/offline availability, ride/delivery requests, sample jobs, accept/skip, pickup, completion, cancellation, and completed-job fare totals shared with the customer view in this browser.
-- Driver Safety Desk at `/driver`: a clearly labeled demo heat index and flood watch, a safer-route suggestion, and AI-assisted order sequencing. It calls the optional `VERCEL_AI_ADVISOR_URL` server-side; without that variable it uses a deterministic local demo response.
+- Driver Safety Desk at `/driver`: a clearly labeled demo heat index and flood watch, a safer-route suggestion, and AI-assisted order sequencing. The Gokada deployment sends the shift to a separate Vercel AI deployment through a server-side bridge; without that connection it uses a deterministic local demo response.
 
 Bookings, drivers, availability, fares, payment choices, and progress are simulated. No real driver is dispatched and no money is collected. There is no authentication, shared database, live tracking, dispatch system, payment processing, delivery proof, or production driver/admin app. History is limited to the latest 100 bookings in this browser; use fictional contact details.
 
@@ -67,7 +67,9 @@ Optional variables belong in your existing `.env.local`. No environment variable
 | `NEXT_PUBLIC_MAP_TILE_URL` | Browser-visible XYZ raster tile template; configure an appropriate provider for deployment. |
 | `NEXT_PUBLIC_MAP_TILE_ATTRIBUTION` | Additional plain-text credit required by a custom tile provider; OpenStreetMap attribution remains visible. |
 | `PLAYWRIGHT_CHANNEL` | Browser channel override for tests; Windows defaults to installed Microsoft Edge. |
-| `VERCEL_AI_ADVISOR_URL` | Optional server-side POST endpoint for the third-party Vercel AI safety assistant. It receives `conditions`, `orders`, `app`, and `version`; it should return `summary`, `route`, and `sortedOrderIds`. |
+| `GOKADA_APP_URL` | Public URL of the deployed Gokada main app, sent to the separate AI deployment as its source and callback URL. |
+| `AI_ASSISTANT_APP_URL` | Public POST URL of the separate Vercel AI assistant deployment. It receives `type`, `conditions`, `orders`, `sourceApp`, and `callback`; it should return `summary`, `route`, and `sortedOrderIds`. |
+| `VERCEL_AI_ADVISOR_URL` | Backward-compatible alias for `AI_ASSISTANT_APP_URL`; use `AI_ASSISTANT_APP_URL` for the two-deployment setup. |
 
 The route-preview API returns deterministic illustrative geometry without an external routing request. Pricing and ETA remain illustrative. Never commit credentials.
 
